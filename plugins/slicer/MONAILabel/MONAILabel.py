@@ -19,7 +19,7 @@ import time
 import traceback
 from collections import OrderedDict
 from urllib.parse import quote_plus
-
+import SegmentStatistics
 import SampleData
 import SimpleITK as sitk
 import ctk
@@ -246,7 +246,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.scribblesMode = None
         self.ignoreScribblesLabelChangeEvent = False
-        self.deepedit_multi_label = False
+        self.deepedit_multi_label = True
 
         self.optionsSectionIndex = 0
         self.optionsNameIndex = 0
@@ -664,7 +664,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgPositiveControlPointPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeControlPointPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
 
-        self.deepedit_multi_label = False
+        self.deepedit_multi_label = True # THIS NEEDS TO BE TRUE FOR NOW
         m = self.models.get(self.ui.deepgrowModelSelector.currentText) if self.models else None
         self.deepedit_multi_label = m and m.get("type") == "deepedit" and len(m.get("labels")) > 0
 
@@ -1351,18 +1351,21 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     print(f"Sequence Node Object Was Created \n: {self._sequenceNode}")
                     self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
                     print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
+                    proxy_node = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
+                    print(f"Proxy Node Object Was Created \n: {proxy_node}")
                     if USE_PROXY_AS_VOLUME:
-                        ref_vol = sampleDataLogic.downloadFromURL(
-                            nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
-                        )[0]
-                        ref_vol.SetName("reference 4d volume")
+                        # ref_vol = sampleDataLogic.downloadFromURL(
+                        #     nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
+                        # )[0]
+                        # ref_vol.SetName("reference 4d volume")
+                        #
+                        self._volumeNode = self._sequenceNode.GetNthDataNode(0)
 
+                        # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(0))
+                        # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(1))
+                        # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(2))
 
-                        self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
-                        self._sequenceNode.SetIndexName("Chanel")
-
-                        self._sequenceNode.SetIndexType("Text")
-                        print(f"Sequence Index info{self._sequenceNode.CopySequenceIndex(self._volumeNode)}")
+                        #print(f"Sequence Index info{self._sequenceNode.CopySequenceIndex(self._volumeNode)}")
                         #self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
                         self._volumeNode.SetName(node_name)
 
@@ -1388,6 +1391,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
                     datastore = self.logic.datastore()
+                    #print("Datastore: ", datastore)
                     label_info = datastore["objects"][image_id]["labels"]["original"]["info"]
                     labels = label_info.get("params", {}).get("label_names", {})
 
@@ -1401,10 +1405,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                     # ext = datastore['objects'][image_id]['labels']['original']['ext']
                     maskFile = self.logic.download_label(image_id, "original")
+                    print("Mask File: ", maskFile)
+                    print("Labels: ", list(labels))
+                    print(f"Seg Node {self._segmentNode }")
                     self.updateSegmentationMask(maskFile, list(labels))
                     print("Original label uploaded! ")
 
-                except:
+                except Exception as e:
+                    print("Exception: ", e)
+                    logging.info("Exception: " + str(e))
                     print("Original label not found ... ")
 
             self.initSample(sample)
@@ -1792,7 +1801,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._segmentNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
             self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
             self._segmentNode.SetName(name)
-
+            print(f"Segment {self._segmentNode} created")
     def createScribblesROINode(self):
         if self._volumeNode is None:
             return
@@ -1817,13 +1826,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if in_file and not os.path.exists(in_file):
             return False
 
-        segmentationNode = self._segmentNode
+        segmentationNode = self._segmentNode # Is Currenlt NoneType
         segmentation = segmentationNode.GetSegmentation()
 
         if in_file is None:
             for label in labels:
                 if not segmentation.GetSegmentIdBySegmentName(label):
-                    segmentation.AddEmptySegment(label, label, self.getLabelColor(label))
+                    segmentation.AddEmptySegment(label, label, self. getLabelColor(label))
             return True
 
         if in_file.endswith(".seg.nrrd") and self.file_ext == ".seg.nrrd":
