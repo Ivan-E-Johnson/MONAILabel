@@ -359,8 +359,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # embedded segment editor
         self.ui.embeddedSegmentEditorWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
-        self.ui.embeddedSegmentEditorWidget.setSourceVolumeNodeSelectorVisible(False)
+        self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(True) # UPDATED THIS TO SEE WHAT HAPPENS
+        self.ui.embeddedSegmentEditorWidget.setSourceVolumeNodeSelectorVisible(True) # Ensure that the source volume is visible
         self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(self.logic.get_segment_editor_node())
 
         # options section
@@ -969,7 +969,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             v = self._volumeNode
             IjkToRasMatrix = vtk.vtkMatrix4x4()  # If using Sequence Cant use this due to the fact that sequence doesnt have a
             v.GetIJKToRASMatrix(IjkToRasMatrix)
-
+            #
+            #   When using Sequence and single browserNode
+            #   Elements:
+            #     -0.273438 0 0 57.3473
+            #     0 0.25375 1.11774 -60.7723
+            #     0 -0.101878 2.784 24.7028
+            #     0 0 0 1
+            #
             fPosStr = vtk.mutable("")
             segment.GetTag(tagName, fPosStr)
             pointset = str(fPosStr)
@@ -1343,23 +1350,24 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         self._volumeNode = sampleDataLogic.downloadFromURL(
                             nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
                         )[0]
-                        self._volumeNode.SetName(node_name)
+                        self._volumeNode.SetName(node_name + " volume Initalized")
                     #self._sequenceBrowserNode  = slicer.modules.sequences.logic().GetFirstBrowserNodeForSequenceNode(self._sequenceNode)
                     # I dont think we need to make these attributes of the class
                     self._sequenceNode = sampleDataLogic.downloadFromURL(nodeNames= node_name, fileNames= image_name, uris =download_uri, checksums=checksum, loadFileTypes='SequenceFile')[0]
 
-                    print(f"Sequence Node Object Was Created \n: {self._sequenceNode}")
-                    self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
-                    print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
-                    proxy_node = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
-                    print(f"Proxy Node Object Was Created \n: {proxy_node}")
+                    # print(f"Sequence Node Object Was Created \n: {self._sequenceNode}")
+                    # self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
+                    # print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
+                    # proxy_node = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
+                    # print(f"Proxy Node Object Was Created \n: {proxy_node}")
                     if USE_PROXY_AS_VOLUME:
                         # ref_vol = sampleDataLogic.downloadFromURL(
                         #     nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
                         # )[0]
                         # ref_vol.SetName("reference 4d volume")
                         #
-                        self._volumeNode = self._sequenceNode.GetNthDataNode(0)
+
+                        #self._volumeNode = self._sequenceNode.GetNthDataNode(0)
 
                         # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(0))
                         # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(1))
@@ -1387,6 +1395,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # Unsure if we are using this-- Doubtfull but will leave for now
             # I belive this is somthing that may need to be updated later if we want to use original labels for prostates
             # TODO: Update this to work with prostate labels/ Update Prostate labels to save to this location so we can use them
+            self._sequenceNode.DebugOn()
+           # self._sequenceBrowserNode.DebugOn()
+            self._volumeNode.DebugOn()
+            self._volumeNode.BreakOnError()
+            self._sequenceNode.BreakOnError()
+            #proxy_node.debugOn()
 
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
@@ -1429,6 +1443,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateGUIFromParameterNode()
         logging.info(f"Time consumed by next_sample: {time.time() - start:3.1f}")
+
+    def ensure_segment_node_geometry(self):
+        print(self._segmentNode.GetNodeReference("referenceImageGeometryRef"))
+        if self._segmentNode.GetNodeReference("referenceImageGeometryRef") is None:
+            print("Setting Geometry")
+            self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
+        elif self._segmentNode.GetNodeReference("referenceImageGeometryRef") != self._volumeNode:
+            print("Geomptry was not set correctly, resetting")
+            self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
 
     def initSample(self, sample, autosegment=True):
         sample["VolumeNodeName"] = self._volumeNode.GetName()
@@ -1794,6 +1817,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return slicer.util.mainWindow().cursor
 
     def createSegmentNode(self):
+        print("Creating Segment Node")
         if self._volumeNode is None:
             return
         if self._segmentNode is None:
@@ -1801,6 +1825,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._segmentNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
             self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
             self._segmentNode.SetName(name)
+            self._segmentNode.DebugOn()
+            self._segmentNode.BreakOnError()
+            self._segmentNode.CreateDefaultDisplayNodes()
+            self._segmentNode.GetDisplayNode()
+            # shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
             print(f"Segment {self._segmentNode} created")
     def createScribblesROINode(self):
         if self._volumeNode is None:
@@ -1836,6 +1865,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return True
 
         if in_file.endswith(".seg.nrrd") and self.file_ext == ".seg.nrrd":
+            # Could this be causing problems since we are loading directly vs vtkMRMLLabelMapVolumeNode
             print("Update Segmentation Mask from: ", in_file)
             logging.info("Update Segmentation Mask from: " + in_file)
             source_node = slicer.modules.segmentations.logic().LoadSegmentationFromFile(in_file, False)
