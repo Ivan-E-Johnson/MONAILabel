@@ -1354,7 +1354,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     #self._sequenceBrowserNode  = slicer.modules.sequences.logic().GetFirstBrowserNodeForSequenceNode(self._sequenceNode)
                     # I dont think we need to make these attributes of the class
                     self._sequenceNode = sampleDataLogic.downloadFromURL(nodeNames= node_name, fileNames= image_name, uris =download_uri, checksums=checksum, loadFileTypes='SequenceFile')[0]
-
+                    self._sequenceNode.SetName(node_name + " sequence Initalized")
+                    volumeSequenceProxyNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+                    volumeSequenceProxyNode.SetName(node_name + " proxy")
+                    volumeSequenceBrowserNode = slicer.modules.sequences.logic().GetFirstBrowserNodeForProxyNode(
+                        volumeSequenceProxyNode)
+                    volumeSequenceNode = volumeSequenceBrowserNode.GetSequenceNode(volumeSequenceProxyNode)
+                    sequence_logic = slicer.modules.sequences.logic()
+                    self._sequenceBrowserNode = sequence_logic.GetFirstBrowserNodeForSequenceNode(self._sequenceNode)
+                    volumesLogic = slicer.modules.volumes.logic()
+                    #self._sequenceBrowserNode = slicer.modules.sequences.logic()
                     # print(f"Sequence Node Object Was Created \n: {self._sequenceNode}")
                     # self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
                     # print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
@@ -1368,7 +1377,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         #
 
                         #self._volumeNode = self._sequenceNode.GetNthDataNode(0)
-
+                        print(self._sequenceNode.GetNthDataNode(0))
+                        print(self._sequenceNode.GetNthDataNode(1))
+                        print(self._sequenceNode.GetNthDataNode(2))
+                        t2 = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode", "T2")
+                        self._sequenceNode.GetNthDataNode(0).CopyContent(t2)
+                        self._volumeNode = self._sequenceNode.GetNthDataNode(0).Clone()
                         # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(0))
                         # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(1))
                         # self._volumeNodes.append(self._sequenceNode.GetNthDataNode(2))
