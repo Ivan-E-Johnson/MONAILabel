@@ -1,4 +1,4 @@
-# Seminal Vessical Segmentation Setup
+# Seminal Vessical Developer Enviornment Setup
 
 This tutorial walks you through how to set up a custom segmentation environment for segmenting Seminal Vessels, Prostate Peripheral, Central Gland, and Urethra from Multi-Modal Images. We assume that you have [Python 3.10](https://www.python.org/downloads/release/python-3100/) installed for this tutorial.
 
@@ -76,16 +76,37 @@ python3 setup.py develop
 ```
 
 5. Check to ensure that Installed correctly 
+These commands are used to see what packages are installed in you current virtual enviornment.
+Display all installed Packages
 ``` pip3 freeze ```
+
 #TODO ADD IMAGE HERE 
+
+Display Installed Monai Packages 
 ``` pip3 freeze | grep monai ```
 #TODO ADD IMAGE HERE 
 
 ## Slicer Setup 
 1. Download Slicer
-If you have Slicer Version 5.2 installed already you can skip this step. Otherwise you can download Slicer 5.2 [here](https://download.slicer.org/). Select a Stable download based on your Operating System and Click donwload. If using linux once downloaded open the compressed file and extract to desired install location, I will export it to our newly created directory but install location is unimportant. If using Windows open downloaded file and follow the Setup Wizard, this allows you to choose a location to save the application. Again it is not important where you save this app as long as you know where it is to open the program. 
+If you have Slicer Version 5.2 installed already you can skip this step. Otherwise you can download Slicer 5.2 [here](https://download.slicer.org/). 
+Select a Stable download based on your Operating System and Click donwload. 
 
-2. Set up MonaiLabel as Slicer Extention
+If using linux once downloaded open the compressed file and extract to desired install location, I will export it to our newly created directory but install location is unimportant. 
+
+If using Windows open downloaded file and follow the Setup Wizard, this allows you to choose a location to save the application. Again it is not important where you save this app as long as you know where it is to open the program. 
+
+2. Open Slicer
+I will show how to open Slicer from command line but you can also navigate and start the application by using your Operating Systems File Navigation GUI. It is also important to note that if you chose a different install location these shell commands may need to be updated with your paths. 
+Windows:
+```
+cd '.\Slicer 5.2.2\'
+.\Slicer.exe
+```
+Linux/Mac:
+```
+cd Slicer-5.2.2
+./Slicer
+```
 
 3. [Optional] Set MonaiLabel to automatically open 
 
